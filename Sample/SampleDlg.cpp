@@ -543,7 +543,6 @@ void CSampleDlg::On2chika()
 	}
 	*/
 	
-	
 	//	2値化処理（判別分析法）
 	int	   t, bt = 0;	//	閾値, ベストな閾値（結果は74）
 	double v_max = 0;	//	クラス間分散の最大値
@@ -586,88 +585,6 @@ void CSampleDlg::On2chika()
 			}
 		}
 	}
-
-	/*
-	//	２値化処理（k-means法）
-	srand(time(nullptr));
-	int centers[2] = {64, 192};
-	int *pixelClusters = new int[m_BmpInfo->bmiHeader.biHeight * m_BmpInfo->bmiHeader.biWidth];
-	int iterCount = 0, maxIter = 100;
-	bool changed;
-
-	do {
-		changed = false;
-
-		//	各ピクセルを最も近いクラスタに割り当て
-		for (i = 0; i < m_BmpInfo->bmiHeader.biHeight; i++) {
-			for (j = 0; j < m_BmpInfo->bmiHeader.biWidth; j++) {
-				pixelClusters[i * m_BmpInfo->bmiHeader.biWidth + j] = 0;
-
-				dy = m_Image->R[i][j];
-				int bestCluster = 0;
-				int minDist = dy - centers[0];
-				minDist *= (minDist >= 0) ? 1 : -1;
-
-				for (int c = 1; c < 2; c++) {
-					int dist = dy - centers[c];
-					dist *= (dist >= 0) ? 1 : -1;
-					if (dist < minDist) {
-						minDist = dist;
-						bestCluster = c;
-					}
-				}
-
-				int idx = i * m_BmpInfo->bmiHeader.biWidth + j;
-				if (pixelClusters[idx] != bestCluster) {
-					changed = true;
-					pixelClusters[idx] = bestCluster;
-				}
-			}
-		}
-
-		//	クラスタ中心を更新
-		long long sums[2] = { 2, 0 };
-		int counts[2] = { 2, 0 };
-		for (i = 0; i < m_BmpInfo->bmiHeader.biHeight; i++) {
-			for (j = 0; j < m_BmpInfo->bmiHeader.biWidth; j++) {
-				int cluster = pixelClusters[i * m_BmpInfo->bmiHeader.biWidth + j];
-				sums[cluster] += dy;
-				counts[cluster]++;
-			}
-		}
-
-		for (int c = 0; c < 2; c++) {
-			if (counts[c] > 0) {
-				centers[c] = sums[c] / counts[c];
-			}
-			else {
-				centers[c] = (c == 0) ? 64 : 192;
-			}
-		}
-
-		iterCount++;
-	} while (changed && iterCount < maxIter);
-
-	int darkCluster = (centers[0] < centers[1]) ? 0 : 1;
-
-	for (i = 0; i < m_BmpInfo->bmiHeader.biHeight; i++) {
-		for (j = 0; j < m_BmpInfo->bmiHeader.biWidth; j++) {
-			int cluster = pixelClusters[i * m_BmpInfo->bmiHeader.biWidth + j];
-			if (cluster == darkCluster) {
-				m_Image->R[i][j] = 0;
-				m_Image->G[i][j] = 0;
-				m_Image->B[i][j] = 0;
-			}
-			else {
-				m_Image->R[i][j] = 255;
-				m_Image->G[i][j] = 255;
-				m_Image->B[i][j] = 255;
-			}
-		}
-	}
-
-	free(pixelClusters);
-	*/
 
 	//	２値化処理（p－タイル法）
 	/*
@@ -3335,11 +3252,6 @@ CalcInverseMatrix(std::array<std::array<double, N>, N> mat) {
             }
         }
 
-        // 行列が特異に近い場合のチェック
-        if (std::abs(sweep[k][k]) < epsilon) {
-            throw std::runtime_error("Matrix is nearly singular");
-        }
-
         // k行目の正規化
         double a = 1.0 / sweep[k][k];
         for (j = 0; j < N * 2; j++) {
@@ -3363,27 +3275,6 @@ CalcInverseMatrix(std::array<std::array<double, N>, N> mat) {
         for (j = 0; j < N; j++) {
             inv[i][j] = sweep[i][j + N];
         }
-    }
-
-    // 結果の検証（オプション）
-    // 元の行列と計算した逆行列の積が単位行列に近いかチェック
-    double max_error = 0.0;
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < N; j++) {
-            double sum = 0.0;
-            for (k = 0; k < N; k++) {
-                sum += mat[i][k] * inv[k][j];
-            }
-            if (i == j) {
-                max_error = std::max(max_error, std::abs(sum - 1.0));
-            } else {
-                max_error = std::max(max_error, std::abs(sum));
-            }
-        }
-    }
-
-    if (max_error > epsilon) {
-        throw std::runtime_error("Inverse matrix verification failed");
     }
 
     return inv;
@@ -3519,6 +3410,20 @@ void CSampleDlg::OnAffine()
 				m_Image->B[y][x] = (1 - dx) * (1 - dy) * m_Image->B[yr][xr] + dx * (1 - dy) * m_Image->B[yr][xr + 1] + (1 - dx) * dy * m_Image->B[yr + 1][xr] + dx * dy * m_Image->B[yr + 1][xr + 1];
 			}
 		}
+		//	補間なしver.
+		//for (int y = 0; y < tsize; y++) {
+		//	for (int x = 0; x < tsize; x++) {
+		//		xp = A[i][0][0] * x + A[i][0][1] * y + A[i][0][2];
+		//		yp = A[i][1][0] * x + A[i][1][1] * y + A[i][1][2];
+		//		if (xp < 0 || xp >= m_Image->Width ||
+		//			yp < 0 || yp >= m_Image->Height) {
+		//			continue;
+		//		}
+		//		m_Image->R[yp][xp] = m_Image->R[y][x];
+		//		m_Image->G[yp][xp] = m_Image->G[y][x];
+		//		m_Image->B[yp][xp] = m_Image->B[y][x];
+		//	}
+		//}
 	}
 
 	//	描画
